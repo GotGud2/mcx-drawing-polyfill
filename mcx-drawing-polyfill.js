@@ -126,6 +126,55 @@
             {
                 this.setMap(options.map);
             }
+
+            // polyfill for polyineOptions to adjust the way the ghostline is displayed
+            this._polylineOptions = {
+                strokeOpacity: 0, // The main solid stroke must be hidden for dots to work
+                icons: [{
+                    icon: {
+                        // FIX: Changed from a dashed line to a dotted line as requested
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: '#1a73e8',
+                        fillOpacity: 0.7,
+                        strokeOpacity: 0,
+                        scale: 2
+                    },
+                    offset: '0',
+                    repeat: '4px'
+                }]
+            };
+
+            // Custom finishingMarker settings
+            // This is a custom solution and was not a part of the official drawing library
+            this._finishingMarkerSVGOptions = {
+                    fillColor: '#ffffff',
+                    fillOpacity: 1,
+                    strokeColor: '#1a73e8',
+                    strokeWeight: 2,
+                    scale: 5
+                };
+
+            // Inject provided options and do not fully override to allow partial changing of options
+            if (options.polylineOptions) {
+                this._polylineOptions = Object.assign(options.polylineOptions, this._polylineOptions);
+            }
+
+            if(options.finishingMarkerSVG){
+                // Allow custom svg HMTL to be passed to the drawing manager
+                this._finishingMarkerSVG = options.finishingMarkerSVG;
+            } else {
+                if(options.finishingMarkerSVGOptions){
+                    this._finishingMarkerSVGOptions = Object.assign(options.finishingMarkerSVGOptions, this._finishingMarkerSVGOptions);
+                }
+
+                // Calculate the size of the svg element needs to be fully visible
+                this._finishingMarkerSVGOptions.boundingSize = 
+                (parseFloat(this._finishingMarkerSVGOptions?.scale ?? "1") * 2)
+                 + (parseFloat(this._finishingMarkerSVGOptions?.strokeWeight ?? "0") * 2); 
+
+                // Generate basic circle SVG HTML
+                this._finishingMarkerSVG = `<svg height="${this._finishingMarkerSVGOptions.boundingSize}" width="${this._finishingMarkerSVGOptions.boundingSize}" xmlns="http://www.w3.org/2000/svg"><circle cx="${this._finishingMarkerSVGOptions.boundingSize/2}" cy="${this._finishingMarkerSVGOptions.boundingSize/2}" r="${this._finishingMarkerSVGOptions?.scale ?? "1"}" fill="${this._finishingMarkerSVGOptions?.fillColor ?? "#000"}" opacity="${this._finishingMarkerSVGOptions?.fillOpacity ?? "1"}" stroke="${this._finishingMarkerSVGOptions?.strokeColor ?? "transparent"}" stroke-width="${this._finishingMarkerSVGOptions?.strokeWeight ?? "0"}"/></svg>`;
+            }
         }
 
         // ── Public API ─────────────────────────────────────
@@ -358,26 +407,18 @@
             var ghostPath = [lastCoord, cursorLatLng];
 
             if (!this._ghostLine)
-            {
-                this._ghostLine = new google.maps.Polyline({
+        {
+                var options = {
                     path: ghostPath,
                     map: this._map,
-                    strokeOpacity: 0, // The main solid stroke must be hidden for dots to work
-                    icons: [{
-                        icon: {
-                            // FIX: Changed from a dashed line to a dotted line as requested
-                            path: google.maps.SymbolPath.CIRCLE,
-                            fillColor: '#1a73e8',
-                            fillOpacity: 0.7,
-                            strokeOpacity: 0,
-                            scale: 2
-                        },
-                        offset: '0',
-                        repeat: '4px'
-                    }],
                     clickable: false,
                     zIndex: 201
-                });
+                };
+
+                // inject styling options
+                options = Object.assign(this._polylineOptions, options);
+
+                this._ghostLine = new google.maps.Polyline(options);
             } else
             {
                 this._ghostLine.setPath(ghostPath);
@@ -397,35 +438,47 @@
                 return;
             }
 
-            if (!this._finishingMarker) 
+            if (!this._finishingMarker)
             {
-                this._finishingMarker = new google.maps.Marker({
+                var svgCircleContainer = document.createElement("div");
+                svgCircleContainer.innerHTML = this._finishingMarkerSVG;
+                svgCircleContainer.style.cursor = "pointer"; // Creates the "Hand" icon on hover automatically
+                svgCircleContainer.style.fontSize = 0;
+                svgCircleContainer.style.position = "relative";
+
+                // center the svg on the point of origin
+                // AdvancedMarkerElement places its contents always a bit on top of the actual position
+                svgCircleContainer.style.top = ((this._finishingMarkerSVGOptions.boundingSize / 2) - 1) + "px"; 
+
+
+                this._finishingMarker = new google.maps.marker.AdvancedMarkerElement({
                     map: this._map,
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        fillColor: '#ffffff',
-                        fillOpacity: 1,
-                        strokeColor: '#1a73e8',
-                        strokeWeight: 2,
-                        scale: 5
-                    },
-                    cursor: 'pointer', // Creates the "Hand" icon on hover automatically
+                    content: svgCircleContainer,
                     zIndex: 300
                 });
 
-                google.maps.event.addListener(this._finishingMarker, 'click', function (e)
+                /* polyfill setVisible */
+                this._finishingMarker.setVisible = function(visible)
                 {
-                    if (e.domEvent)
-                    {
-                        e.domEvent.preventDefault();
-                        e.domEvent.stopPropagation();
-                    }
+                    this.setMap(visible ? self._map : null);
+                }
+
+                /* polyfill setPosition */
+                this._finishingMarker.setPosition = function(position)
+                {
+                    this.position = position;
+                }
+
+                this._finishingMarker.addListener("gmp-click", function(e)
+                {
+                    e.preventDefault();
+                    e.stopPropagation();
                     self._onFinishingNodeClick();
                 });
             }
 
             if (mode === OverlayType.POLYLINE) 
-            {
+{
                 // For Polylines, the finishing node lives on the LAST clicked point
                 this._finishingMarker.setPosition(coords[coords.length - 1]);
                 this._finishingMarker.setVisible(true);
@@ -489,7 +542,7 @@
             markerOptions.position = latLng;
             markerOptions.map = this._map;
 
-            var mockMarker = new google.maps.Marker(markerOptions);
+            var mockMarker = new google.maps.marker.AdvancedMarkerElement(markerOptions);
 
             var self = this;
             google.maps.event.trigger(self, 'overlaycomplete', {
