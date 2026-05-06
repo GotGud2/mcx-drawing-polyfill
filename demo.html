@@ -59,7 +59,7 @@
         const API_KEY = "AIzaSyAi3N13hpYxYO7zoynWDSHbW1dLoMOxFxQ";  // "YOUR_API_KEY_HERE"; 
 
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=loadPolyfill`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=loadPolyfill&libraries=marker`;
         script.async = true;
         script.defer = true;
         document.head.appendChild(script);
@@ -77,7 +77,8 @@
             const map = new google.maps.Map(document.getElementById('map'), {
                 center: { lat: 51.5074, lng: -0.1278 }, // London
                 zoom: 13,
-                mapTypeId: 'roadmap'
+                mapTypeId: 'roadmap',
+                mapId: "map"
             });
 
             // Initialize the Polyfilled Drawing Manager
@@ -97,8 +98,8 @@
                 let coords = [];
                 
                 if (event.type === 'marker') {
-                    const pos = event.overlay.getPosition();
-                    coords.push({ lat: pos.lat(), lng: pos.lng() });
+                    const pos = event.overlay.position;
+                    coords.push({ lat: pos.lat, lng: pos.lng });
                 } else {
                     const path = event.overlay.getPath().getArray();
                     coords = path.map(p => ({ lat: p.lat(), lng: p.lng() }));
