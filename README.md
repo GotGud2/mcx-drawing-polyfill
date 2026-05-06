@@ -17,7 +17,7 @@ This polyfill solves the problem by **perfectly replicating the original Google 
 * **Smart Finishing Nodes:** Automatically adds an interactive "finishing node" (a white circle) to easily close polygons or terminate polylines without relying on clunky double-clicks.
 
 ## 🚀 How it works
-Because Google is only deprecating the *interaction layer* (the Drawing Manager), the base map shapes (`google.maps.Marker`, `google.maps.Polyline`, `google.maps.Polygon`) remain perfectly safe and fully supported. 
+Because Google is only deprecating the *interaction layer* (the Drawing Manager), the base map shapes (`google.maps.marker.AdvancedMarkerElement (previously google.maps.Marker)`, `google.maps.Polyline`, `google.maps.Polygon`) remain perfectly safe and fully supported. 
 
 This polyfill hijacks the `window.google.maps.drawing` namespace. It tracks native map `click` and `mousemove` events to render temporary "ghost lines" and shapes, and then outputs standard Google Maps Overlay objects when the shape is completed. 
 
@@ -26,9 +26,11 @@ This polyfill hijacks the `window.google.maps.drawing` namespace. It tracks nati
 
 ## 🗺️ Example
 
-![Alt text](https://raw.githubusercontent.com/mapchannels/mcx-drawing-polyfill/main/mcx-drawing-polyfill.jpg)
+![Google Maps interface with a map of London and drawing tools for lines, shapes, and markers at the top center](https://raw.githubusercontent.com/mapchannels/mcx-drawing-polyfill/main/mcx-drawing-polyfill.jpg)
 
 ## 📦 How to Integrate
+
+**Note:** As of February 21, 2024, `google.maps.Marker` is [deprecated](https://developers.google.com/maps/documentation/javascript/advanced-markers/migration). To use Advanced Markers, ensure the marker library is included in your API URL: `&libraries=marker`.
 
 **Crucial Step:** Because this polyfill injects itself into the `google.maps` namespace, it **must** be loaded *after* the Google Maps API has fully initialized.
 
@@ -37,8 +39,8 @@ If you load Google Maps dynamically (via callback):
 ```javascript
 function loadGoogleMaps() {
     const script = document.createElement('script');
-    // Do NOT include libraries=drawing
-    script.src = '[https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=onMapsReady](https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=onMapsReady)';
+    // Include "libraries=marker" but do NUT include "drawing"
+    script.src = '[https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=onMapsReady&libraries=marker](https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=onMapsReady&libraries=marker)';
     document.head.appendChild(script);
 }
 
