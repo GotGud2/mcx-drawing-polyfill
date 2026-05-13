@@ -40,7 +40,7 @@ If you load Google Maps dynamically (via callback):
 function loadGoogleMaps() {
     const script = document.createElement('script');
     // Include "libraries=marker" but do NOT include "drawing"
-    script.src = '[https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=onMapsReady&libraries=marker](https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=onMapsReady&libraries=marker)';
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=onMapsReady&libraries=marker';
     document.head.appendChild(script);
 }
 
