@@ -127,8 +127,47 @@
                 this.setMap(options.map);
             }
 
-            // polyfill for polyineOptions to adjust the way the ghostline is displayed
+            // customizable options for drawn shapes and markers
+            // included base options to keep the same functionality to original polyfill
+            this._markerOptions = options.markerOptions || {}; // no base settings required
+
+            /**** Use this if base markeroptions get added in the future
+            // Inject provided options and do not fully override to allow partial changing of options
+            if(options.markerOptions){
+                Object.assign(this._markerOptions, options.markerOptions);
+            }
+            */
+
             this._polylineOptions = {
+                    strokeColor: '#1a73e8',
+                    strokeWeight: 3,
+                    strokeOpacity: 0.9,
+                    clickable: true
+            };
+
+            // Inject provided options and do not fully override to allow partial changing of options
+            if(options.polylineOptions){
+                Object.assign(this._polylineOptions, options.polylineOptions);
+            }
+
+            this._polygonOptions = {
+                    strokeColor: '#1a73e8',
+                    strokeWeight: 2,
+                    strokeOpacity: 0.9,
+                    fillColor: '#1a73e8',
+                    fillOpacity: 0.25,
+                    clickable: true
+            };
+
+            // Inject provided options and do not fully override to allow partial changing of options
+            if(options.polygonOptions){
+                Object.assign(this._polygonOptions, options.polygonOptions);
+            }
+
+            // +++ CUSTOM Additions. Anything beyond this point is custom and was not an official option by google.
+
+            // options for ghostline to adjust the way the ghostline is displayed using polyline options
+            this._ghostlineOptions = {
                 strokeOpacity: 0, // The main solid stroke must be hidden for dots to work
                 icons: [{
                     icon: {
@@ -155,16 +194,19 @@
                 };
 
             // Inject provided options and do not fully override to allow partial changing of options
-            if (options.polylineOptions) {
-                this._polylineOptions = Object.assign(options.polylineOptions, this._polylineOptions);
+            if (options.ghostlineOptions) {
+                Object.assign(this._ghostlineOptions, options.ghostlineOptions);
             }
 
             if(options.finishingMarkerSVG){
                 // Allow custom svg HMTL to be passed to the drawing manager
                 this._finishingMarkerSVG = options.finishingMarkerSVG;
+                if(options.finishingMarkerSVGOptions){
+                    console.warn("[MCX] finishingMarkerSVGOptions are ignored when finishingMarkerSVG was provided");
+                }
             } else {
                 if(options.finishingMarkerSVGOptions){
-                    this._finishingMarkerSVGOptions = Object.assign(options.finishingMarkerSVGOptions, this._finishingMarkerSVGOptions);
+                    Object.assign(this._finishingMarkerSVGOptions, options.finishingMarkerSVGOptions);
                 }
 
                 // Calculate the size of the svg element needs to be fully visible
@@ -416,7 +458,7 @@
                 };
 
                 // inject styling options
-                options = Object.assign(this._polylineOptions, options);
+                options = Object.assign({}, this._ghostlineOptions, options);
 
                 this._ghostLine = new google.maps.Polyline(options);
             } else
@@ -532,15 +574,12 @@
         DrawingManager.prototype._finishMarker = function (latLng)
         {
             var markerOptions = {};
-            if (this._options.markerOptions)
-            {
-                for (var k in this._options.markerOptions)
-                {
-                    markerOptions[k] = this._options.markerOptions[k];
-                }
-            }
+
             markerOptions.position = latLng;
             markerOptions.map = this._map;
+
+            // empty base object makes sure Object.assign does not override the base options 
+            markerOptions = Object.assign({}, this._markerOptions, markerOptions); // assign custom settings
 
             var mockMarker = new google.maps.marker.AdvancedMarkerElement(markerOptions);
 
@@ -567,14 +606,16 @@
 
             if (mode === OverlayType.POLYLINE)
             {
-                mockOverlay = new google.maps.Polyline({
+                var options = {
                     path: coords,
-                    map: this._map,
-                    strokeColor: '#1a73e8',
-                    strokeWeight: 3,
-                    strokeOpacity: 0.9,
-                    clickable: true
-                });
+                    map: this._map
+                };
+
+                // empty base object makes sure Object.assign does not override the base options 
+                options = Object.assign({}, this._polylineOptions, options);
+
+                mockOverlay = new google.maps.Polyline(options);
+
                 google.maps.event.trigger(self, 'overlaycomplete', {
                     type: OverlayType.POLYLINE,
                     overlay: mockOverlay
@@ -583,16 +624,15 @@
 
             } else if (mode === OverlayType.POLYGON)
             {
-                mockOverlay = new google.maps.Polygon({
+                var options = {
                     paths: [coords],
-                    map: this._map,
-                    strokeColor: '#1a73e8',
-                    strokeWeight: 2,
-                    strokeOpacity: 0.9,
-                    fillColor: '#1a73e8',
-                    fillOpacity: 0.25,
-                    clickable: true
-                });
+                    map: this._map
+                };
+
+                // empty base object makes sure Object.assign does not override the base options 
+                options = Object.assign({}, this._polygonOptions, options);
+                mockOverlay = new google.maps.Polygon(options);
+
                 google.maps.event.trigger(self, 'overlaycomplete', {
                     type: OverlayType.POLYGON,
                     overlay: mockOverlay
